@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">JPIvocabo</string>
+    <string name="app_name">Ivocabo</string>
     <string name="device_list">Device List</string>
     <string name="add_device">Add Device</string>
     <string name="title_activity_add_device_form">AddDeviceForm</string>

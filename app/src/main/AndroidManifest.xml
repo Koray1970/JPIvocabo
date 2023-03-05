@@ -25,11 +25,13 @@
             android:name=".AddDeviceForm"
             android:exported="false"
             android:label="@string/title_activity_add_device_form"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.JPIvocabo" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.JPIvocabo">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
