@@ -27,6 +27,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.example.jpivocabo.ui.theme.JPIvocaboTheme
+import com.google.android.gms.maps.model.LatLng
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
+import java.time.LocalDateTime
+import java.util.*
 
 class AddDeviceForm : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,16 +43,21 @@ class AddDeviceForm : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 ) {
-                    FormInit()
+                    val intlatlng=intent.getStringExtra("location")
+                    latLng=Json.decodeFromString<LatLng>(intlatlng.toString())
+                    FormInit(latLng)
                 }
             }
         }
+    }
+    companion object{
+        private lateinit var latLng:LatLng
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FormInit() {
+fun FormInit(latLng: LatLng) {
     val context = LocalContext.current;
     var txtmacaddress by rememberSaveable { mutableStateOf("") }
     var haserrormacaddress by rememberSaveable { mutableStateOf(false) }
@@ -104,6 +114,7 @@ fun FormInit() {
             }
             Spacer(Modifier.weight(1f))
             Button(onClick = {
+                var deviceid=""
                 //start::validate
                 var dfmacaddres = txtmacaddress
                 var dfdevicename = txtdevicename
@@ -112,6 +123,20 @@ fun FormInit() {
                     haserrordevicename = dfdevicename == ""
                     if(!haserrordevicename){
                         //start::db event
+                        var device=Device(
+                            id=deviceid.trim().toInt(),
+                            registerdate = LocalDateTime.now().toString(),
+                            macaddress =dfmacaddres,
+                            name = dfdevicename,
+                            latitude = latLng.latitude.toString(),
+                            longitude = latLng.longitude.toString()
+                        )
+
+                        val appDatabase by lazy { AppRoomDatabase.getInstance(context).dbDao() }
+                        viewLifecycleOwner
+                        lifecycleScope.launch {
+                            appDatabase.addDevice(device)
+                        }
                     }
                 }
             }) {

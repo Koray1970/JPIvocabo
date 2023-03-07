@@ -35,6 +35,8 @@ import com.google.maps.android.compose.*
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanIntentResult
 import com.journeyapps.barcodescanner.ScanOptions
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 
 class MainActivity : ComponentActivity() {
@@ -211,11 +213,11 @@ fun MainPage(locationStateViewModel: LocationStateViewModel) {
     }
 
 
-    DeviceAddBottomSheet(openDeviceAddDialog)
+    DeviceAddBottomSheet(openDeviceAddDialog,locState)
 }
 
 @Composable
-fun DeviceAddBottomSheet(openDialog: MutableState<Boolean>) {
+fun DeviceAddBottomSheet(openDialog: MutableState<Boolean>,latLng: LatLng) {
     val context = LocalContext.current;
     if (openDialog.value) {
         val barcodeLauncher = rememberLauncherForActivityResult<ScanOptions, ScanIntentResult>(
@@ -239,13 +241,12 @@ fun DeviceAddBottomSheet(openDialog: MutableState<Boolean>) {
         AlertDialog(onDismissRequest = { openDialog.value = false }, confirmButton = {
             TextButton(onClick = {
                 if (selectedOption == "Scan QRCode") {
-
-
                     val options = ScanOptions()
                     options.setOrientationLocked(false)
                     barcodeLauncher.launch(options)
                 } else {
                     val intforminput = Intent(context, AddDeviceForm::class.java)
+                    intforminput.putExtra("location",Json.encodeToString(latLng))
                     context.startActivity(intforminput)
                     openDialog.value = false
                 }
