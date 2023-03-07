@@ -2,6 +2,7 @@ package com.example.jpivocabo
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.os.Looper
@@ -11,9 +12,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.*
@@ -25,7 +29,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import com.example.jpivocabo.ui.theme.JPIvocaboTheme
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -35,13 +41,17 @@ import com.google.maps.android.compose.*
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanIntentResult
 import com.journeyapps.barcodescanner.ScanOptions
+import kotlinx.coroutines.GlobalScope
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 
 class MainActivity : ComponentActivity() {
     private var requestingLocationUpdates: Boolean = false
-
+    private val deviceViewModel: DeviceViewModel by viewModels() {
+        DeviceViewModelFactory((application as IvocaboApplication).repository)
+    }
+    lateinit var devicelist: List<Device>
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         vmLocationStateViewModel = ViewModelProvider(this).get(LocationStateViewModel::class.java)
@@ -54,12 +64,14 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
 
-                    MainPage(vmLocationStateViewModel)
                 }
+
+                MainPage(vmLocationStateViewModel, this.lifecycle, deviceViewModel)
 
             }
         }
     }
+
 
     @SuppressLint("MissingPermission")
     val locationPermissionRequest = registerForActivityResult(
@@ -104,11 +116,11 @@ class MainActivity : ComponentActivity() {
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult) {
             locationResult ?: return
-            Log.v(TAG, "Last Location Latitude : " + locationResult.locations.last().latitude)
+            //Log.v(TAG, "Last Location Latitude : " + locationResult.locations.last().latitude)
 
             vmLocationStateViewModel.apply {
                 onChange(
-                    LatLng(
+                    DLatLng(
                         locationResult.locations.last().latitude,
                         locationResult.locations.last().longitude
                     )
@@ -153,12 +165,23 @@ class MainActivity : ComponentActivity() {
 
 }
 
-//@Preview(showBackground = true)
-@Composable
-fun MainPage(locationStateViewModel: LocationStateViewModel) {
-    //val singapore = LatLng(1.35, 103.87)
-    var locState = locationStateViewModel.locationStateData
+private var devicelist: List<Device>? = null
 
+//@Preview(showBackground = true)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainPage(
+    locationStateViewModel: LocationStateViewModel,
+    lifecycle: Lifecycle,
+    deviceViewModel: DeviceViewModel
+) {
+    //val singapore = LatLng(1.35, 103.87)
+    val context = LocalContext.current
+    var locState = LatLng(
+        locationStateViewModel.locationStateData.latitude,
+        locationStateViewModel.locationStateData.longitude
+    )
+    //var dlist = remember { mutableStateOf(List<Device>)  }
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(locState, 18f)
     }
@@ -168,7 +191,6 @@ fun MainPage(locationStateViewModel: LocationStateViewModel) {
     val fillcolor = Color(0x20ff0000)
 
     val openDeviceAddDialog = remember { mutableStateOf(false) }
-
 
     Column {
         Box(
@@ -210,15 +232,32 @@ fun MainPage(locationStateViewModel: LocationStateViewModel) {
                 Text(text = stringResource(id = R.string.add_device))
             }
         }
+        devicelist=deviceViewModel.allDevices.value
+        if(devicelist?.isNotEmpty()==true) {
+            Row(modifier = Modifier.fillMaxSize()) {
+
+                LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
+                    items(devicelist!!) {
+                        Text(text = it.macaddress!!)
+                    }
+
+                }
+            }
+        }
     }
 
 
-    DeviceAddBottomSheet(openDeviceAddDialog,locState)
+    DeviceAddBottomSheet(openDeviceAddDialog, locationStateViewModel)
 }
 
+
 @Composable
-fun DeviceAddBottomSheet(openDialog: MutableState<Boolean>,latLng: LatLng) {
+fun DeviceAddBottomSheet(
+    openDialog: MutableState<Boolean>,
+    locationStateViewModel: LocationStateViewModel
+) {
     val context = LocalContext.current;
+    var latLng = locationStateViewModel.locationStateData
     if (openDialog.value) {
         val barcodeLauncher = rememberLauncherForActivityResult<ScanOptions, ScanIntentResult>(
             ScanContract()
@@ -245,9 +284,17 @@ fun DeviceAddBottomSheet(openDialog: MutableState<Boolean>,latLng: LatLng) {
                     options.setOrientationLocked(false)
                     barcodeLauncher.launch(options)
                 } else {
-                    val intforminput = Intent(context, AddDeviceForm::class.java)
-                    intforminput.putExtra("location",Json.encodeToString(latLng))
-                    context.startActivity(intforminput)
+                    if (latLng != null) {
+                        val intforminput = Intent(context, AddDeviceForm::class.java)
+                        intforminput.putExtra("location", Json.encodeToString(latLng))
+                        context.startActivity(intforminput)
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Please check internet connection!",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                     openDialog.value = false
                 }
             }) {

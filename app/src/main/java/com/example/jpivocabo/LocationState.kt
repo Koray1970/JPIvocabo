@@ -18,12 +18,11 @@ import javax.inject.Inject
 )*/
 @HiltViewModel
 class LocationStateViewModel @Inject constructor() : ViewModel() {
-    var locationStateData by mutableStateOf(LatLng(1.35, 103.87))
+    val tLatLng = LatLng(1.35, 103.87)
+    var locationStateData by mutableStateOf(DLatLng(tLatLng.latitude, tLatLng.longitude))
         private set
 
-    /* var locationStateData by mutableStateOf(LocationState(currentlocation = LatLng(1.35, 103.87)))
-     private set*/
-    fun onChange(newLatLng: LatLng?) {
+    fun onChange(newLatLng: DLatLng?) {
         if (newLatLng != null)
             locationStateData = newLatLng
     }

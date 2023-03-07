@@ -1,6 +1,7 @@
 package com.example.jpivocabo
 
 import androidx.room.*
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface DBDao {
@@ -14,11 +15,11 @@ interface DBDao {
     suspend fun addDevice(device: Device)
 
     @Query("SELECT * FROM devices WHERE id= :id")
-    fun findDevice(id:Int):Device
+    fun findDeviceById(id:Int):Device
 
     @Query("SELECT * FROM devices")
-    fun getAllDevice():List<Device>
+    fun getAllDevice(): Flow<List<Device>>
 
     @Delete
-    fun deleteDevice(device: Device)
+    suspend fun deleteDevice(device: Device)
 }

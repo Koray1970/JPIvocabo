@@ -26,14 +26,21 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.ViewModel
 import com.example.jpivocabo.ui.theme.JPIvocaboTheme
 import com.google.android.gms.maps.model.LatLng
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.time.LocalDateTime
 import java.util.*
+import androidx.activity.viewModels
+import androidx.lifecycle.viewModelScope
+
 
 class AddDeviceForm : ComponentActivity() {
+    private val deviceViewModel: DeviceViewModel by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -43,15 +50,20 @@ class AddDeviceForm : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 ) {
-                    val intlatlng=intent.getStringExtra("location")
-                    latLng=Json.decodeFromString<LatLng>(intlatlng.toString())
+                    val intlatlng = intent.getStringExtra("location")
+                    var tlatLng = Json.decodeFromString<DLatLng>(intlatlng.toString())
+                    latLng = LatLng(tlatLng.latitude, tlatLng.longitude)
                     FormInit(latLng)
                 }
             }
         }
     }
-    companion object{
-        private lateinit var latLng:LatLng
+    fun addDevice(device: Device){
+        deviceViewModel.insert(device)
+    }
+    companion object {
+        private lateinit var latLng: LatLng
+
     }
 }
 
@@ -71,7 +83,15 @@ fun FormInit(latLng: LatLng) {
             .padding(20.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        Text(text = "Add Device Form", color = Color.White, fontSize=20.sp, fontWeight = FontWeight.Black, modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp))
+        Text(
+            text = "Add Device Form",
+            color = Color.White,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 10.dp)
+        )
         TextField(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
@@ -114,29 +134,27 @@ fun FormInit(latLng: LatLng) {
             }
             Spacer(Modifier.weight(1f))
             Button(onClick = {
-                var deviceid=""
+                var deviceid = ""
                 //start::validate
                 var dfmacaddres = txtmacaddress
                 var dfdevicename = txtdevicename
                 haserrormacaddress = !AppHelper().CheckMacAddress(dfmacaddres)
                 if (!haserrormacaddress) {
                     haserrordevicename = dfdevicename == ""
-                    if(!haserrordevicename){
+                    if (!haserrordevicename) {
                         //start::db event
-                        var device=Device(
-                            id=deviceid.trim().toInt(),
+                        var device = Device(
+                            id = deviceid.trim().toInt(),
                             registerdate = LocalDateTime.now().toString(),
-                            macaddress =dfmacaddres,
+                            macaddress = dfmacaddres,
                             name = dfdevicename,
                             latitude = latLng.latitude.toString(),
                             longitude = latLng.longitude.toString()
                         )
+                        AddDeviceForm().addDevice(device)
+                        val intgoback = Intent(context, MainActivity::class.java)
+                        context.startActivity(intgoback)
 
-                        val appDatabase by lazy { AppRoomDatabase.getInstance(context).dbDao() }
-                        viewLifecycleOwner
-                        lifecycleScope.launch {
-                            appDatabase.addDevice(device)
-                        }
                     }
                 }
             }) {
