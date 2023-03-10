@@ -40,7 +40,10 @@ import androidx.lifecycle.viewModelScope
 
 
 class AddDeviceForm : ComponentActivity() {
-    private val deviceViewModel: DeviceViewModel by viewModels()
+    private val deviceViewModel: DeviceViewModel by viewModels() {
+        DeviceViewModelFactory((application as IvocaboApplication).repository)
+    }
+    //private val deviceViewModel: DeviceViewModel by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -53,14 +56,12 @@ class AddDeviceForm : ComponentActivity() {
                     val intlatlng = intent.getStringExtra("location")
                     var tlatLng = Json.decodeFromString<DLatLng>(intlatlng.toString())
                     latLng = LatLng(tlatLng.latitude, tlatLng.longitude)
-                    FormInit(latLng)
+                    FormInit(latLng,deviceViewModel)
                 }
             }
         }
     }
-    fun addDevice(device: Device){
-        deviceViewModel.insert(device)
-    }
+
     companion object {
         private lateinit var latLng: LatLng
 
@@ -69,7 +70,7 @@ class AddDeviceForm : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FormInit(latLng: LatLng) {
+fun FormInit(latLng: LatLng,deviceViewModel: DeviceViewModel) {
     val context = LocalContext.current;
     var txtmacaddress by rememberSaveable { mutableStateOf("") }
     var haserrormacaddress by rememberSaveable { mutableStateOf(false) }
@@ -144,15 +145,15 @@ fun FormInit(latLng: LatLng) {
                     if (!haserrordevicename) {
                         //start::db event
                         var device = Device(
-                            id = deviceid.trim().toInt(),
+                            id = 0,
                             registerdate = LocalDateTime.now().toString(),
                             macaddress = dfmacaddres,
                             name = dfdevicename,
                             latitude = latLng.latitude.toString(),
                             longitude = latLng.longitude.toString()
                         )
-                        AddDeviceForm().addDevice(device)
-                        val intgoback = Intent(context, MainActivity::class.java)
+                        deviceViewModel.insert(device)
+                        val intgoback = Intent(context.applicationContext, MainActivity::class.java)
                         context.startActivity(intgoback)
 
                     }

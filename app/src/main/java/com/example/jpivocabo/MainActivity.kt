@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
     private val deviceViewModel: DeviceViewModel by viewModels() {
         DeviceViewModelFactory((application as IvocaboApplication).repository)
     }
-    lateinit var devicelist: List<Device>
+    //lateinit var devicelist: List<Device>
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         vmLocationStateViewModel = ViewModelProvider(this).get(LocationStateViewModel::class.java)
@@ -65,9 +65,7 @@ class MainActivity : ComponentActivity() {
                 ) {
 
                 }
-
-                MainPage(vmLocationStateViewModel, this.lifecycle, deviceViewModel)
-
+                MainPage(vmLocationStateViewModel, deviceViewModel)
             }
         }
     }
@@ -172,7 +170,6 @@ private var devicelist: List<Device>? = null
 @Composable
 fun MainPage(
     locationStateViewModel: LocationStateViewModel,
-    lifecycle: Lifecycle,
     deviceViewModel: DeviceViewModel
 ) {
     //val singapore = LatLng(1.35, 103.87)
@@ -232,15 +229,23 @@ fun MainPage(
                 Text(text = stringResource(id = R.string.add_device))
             }
         }
-        devicelist=deviceViewModel.allDevices.value
-        if(devicelist?.isNotEmpty()==true) {
-            Row(modifier = Modifier.fillMaxSize()) {
+        var devicelivedata=deviceViewModel.allDevices;
+        if(devicelivedata.hasObservers()) {
+            devicelist = deviceViewModel.allDevices.value
+            if (devicelist?.isNotEmpty() == true) {
+                Row(modifier = Modifier.fillMaxSize()) {
 
-                LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)) {
-                    items(devicelist!!) {
-                        Text(text = it.macaddress!!)
+                    LazyColumn(
+                        contentPadding = PaddingValues(
+                            horizontal = 16.dp,
+                            vertical = 8.dp
+                        )
+                    ) {
+                        items(devicelist!!) {
+                            Text(text = it.macaddress!!)
+                        }
+
                     }
-
                 }
             }
         }
