@@ -1,4 +1,4 @@
-package com.example.jpivocabo
+package com.example.jpivocabo.database
 
 import android.os.Parcelable
 import androidx.room.ColumnInfo
@@ -23,7 +23,7 @@ data class User(
 @Parcelize
 @Entity(tableName="devices")
 data class Device(
-    @PrimaryKey(autoGenerate = true) val id:Int,
+    @PrimaryKey(autoGenerate = true) @ColumnInfo(name="id") val id:Int,
     @ColumnInfo(name="registered") val registerdate:String?,
     @ColumnInfo(name="mac-address") val macaddress:String?,
     @ColumnInfo(name="device-name") val name:String?,
@@ -34,7 +34,7 @@ data class Device(
 @Parcelize
 @Entity(tableName="devicetracks")
 data class DeviceLocationList(
-    @PrimaryKey val id:Int,
+    @PrimaryKey(autoGenerate = true) @ColumnInfo(name="id")  val id:Int,
     @ColumnInfo(name="registerdate") val registerdate:String?,
     @ColumnInfo(name="deviceid") val deviceid:Int,
     @ColumnInfo(name="latitude") val latitude:String,
@@ -44,7 +44,7 @@ data class DeviceLocationList(
 @Parcelize
 @Entity(tableName="lostdevices")
 data class LostDevices(
-    @PrimaryKey val id:Int,
+    @PrimaryKey(autoGenerate = true) @ColumnInfo(name="id")  val id:Int,
     @ColumnInfo(name="registerdate") val registerdate:String?,
     @ColumnInfo(name="deviceid") val deviceid:Int,
     @ColumnInfo(name="latitude") val latitude:String,
@@ -54,7 +54,7 @@ data class LostDevices(
 @Parcelize
 @Entity(tableName="lost-devices-archive")
 data class LostDevicesArchive(
-    @PrimaryKey val id:Int,
+    @PrimaryKey(autoGenerate = true) @ColumnInfo(name="id")  val id:Int,
     @ColumnInfo(name="registerdate") val registerdate:String,
     @ColumnInfo(name="finddate") val finddate:Date,
     @ColumnInfo(name="deviceid") val deviceid:Int,

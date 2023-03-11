@@ -2,7 +2,6 @@ package com.example.jpivocabo
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.os.Looper
@@ -12,7 +11,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.annotation.RequiresPermission
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -22,6 +20,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,9 +28,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.room.Room
+import com.example.jpivocabo.database.*
 import com.example.jpivocabo.ui.theme.JPIvocaboTheme
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -41,16 +41,13 @@ import com.google.maps.android.compose.*
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanIntentResult
 import com.journeyapps.barcodescanner.ScanOptions
-import kotlinx.coroutines.GlobalScope
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 
 class MainActivity : ComponentActivity() {
     private var requestingLocationUpdates: Boolean = false
-    private val deviceViewModel: DeviceViewModel by viewModels() {
-        DeviceViewModelFactory((application as IvocaboApplication).repository)
-    }
+
     //lateinit var devicelist: List<Device>
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,7 +62,7 @@ class MainActivity : ComponentActivity() {
                 ) {
 
                 }
-                MainPage(vmLocationStateViewModel, deviceViewModel)
+                MainPage(vmLocationStateViewModel)
             }
         }
     }
@@ -168,10 +165,7 @@ private var devicelist: List<Device>? = null
 //@Preview(showBackground = true)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainPage(
-    locationStateViewModel: LocationStateViewModel,
-    deviceViewModel: DeviceViewModel
-) {
+fun MainPage(locationStateViewModel: LocationStateViewModel) {
     //val singapore = LatLng(1.35, 103.87)
     val context = LocalContext.current
     var locState = LatLng(
@@ -188,6 +182,10 @@ fun MainPage(
     val fillcolor = Color(0x20ff0000)
 
     val openDeviceAddDialog = remember { mutableStateOf(false) }
+    val dbViewModel:DBViewModel= viewModel(factory = DBViewModelFactory(context.applicationContext as IvocaboApplication))
+
+    devicelist = dbViewModel.readAllDevice.observeAsState(initial = listOf()).value
+
 
     Column {
         Box(
@@ -229,26 +227,23 @@ fun MainPage(
                 Text(text = stringResource(id = R.string.add_device))
             }
         }
-        var devicelivedata=deviceViewModel.allDevices;
-        if(devicelivedata.hasObservers()) {
-            devicelist = deviceViewModel.allDevices.value
-            if (devicelist?.isNotEmpty() == true) {
-                Row(modifier = Modifier.fillMaxSize()) {
 
-                    LazyColumn(
-                        contentPadding = PaddingValues(
-                            horizontal = 16.dp,
-                            vertical = 8.dp
-                        )
-                    ) {
-                        items(devicelist!!) {
-                            Text(text = it.macaddress!!)
-                        }
 
+        Row(modifier = Modifier.fillMaxSize()) {
+            if (devicelist!!.isNotEmpty()) {
+                LazyColumn(
+                    contentPadding = PaddingValues(
+                        horizontal = 16.dp,
+                        vertical = 8.dp
+                    )
+                ) {
+                    items(devicelist!!) {
+                        Text(text = it.macaddress!!)
                     }
                 }
             }
         }
+
     }
 
 

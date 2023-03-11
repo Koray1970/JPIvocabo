@@ -1,49 +1,36 @@
 package com.example.jpivocabo
 
 import android.content.Intent
-import android.graphics.ColorSpace
 import android.os.Bundle
-import android.widget.Toast
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.room.Room
+import com.example.jpivocabo.database.*
 import com.example.jpivocabo.ui.theme.JPIvocaboTheme
 import com.google.android.gms.maps.model.LatLng
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.time.LocalDateTime
 import java.util.*
-import androidx.activity.viewModels
-import androidx.lifecycle.viewModelScope
 
 
 class AddDeviceForm : ComponentActivity() {
-    private val deviceViewModel: DeviceViewModel by viewModels() {
-        DeviceViewModelFactory((application as IvocaboApplication).repository)
-    }
-    //private val deviceViewModel: DeviceViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -56,7 +43,7 @@ class AddDeviceForm : ComponentActivity() {
                     val intlatlng = intent.getStringExtra("location")
                     var tlatLng = Json.decodeFromString<DLatLng>(intlatlng.toString())
                     latLng = LatLng(tlatLng.latitude, tlatLng.longitude)
-                    FormInit(latLng,deviceViewModel)
+                    FormInit(latLng)
                 }
             }
         }
@@ -68,16 +55,17 @@ class AddDeviceForm : ComponentActivity() {
     }
 }
 
+private val TAG = "FormInit"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FormInit(latLng: LatLng,deviceViewModel: DeviceViewModel) {
+fun FormInit(latLng: LatLng) {
     val context = LocalContext.current;
     var txtmacaddress by rememberSaveable { mutableStateOf("") }
     var haserrormacaddress by rememberSaveable { mutableStateOf(false) }
     var txtdevicename by rememberSaveable { mutableStateOf("") }
     var haserrordevicename by rememberSaveable { mutableStateOf(false) }
-
-
+    val dbViewModel: DBViewModel = viewModel(factory = DBViewModelFactory(context.applicationContext as IvocaboApplication))
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -152,7 +140,11 @@ fun FormInit(latLng: LatLng,deviceViewModel: DeviceViewModel) {
                             latitude = latLng.latitude.toString(),
                             longitude = latLng.longitude.toString()
                         )
-                        deviceViewModel.insert(device)
+
+
+                        dbViewModel.addDevice(device)
+
+
                         val intgoback = Intent(context.applicationContext, MainActivity::class.java)
                         context.startActivity(intgoback)
 
@@ -164,6 +156,7 @@ fun FormInit(latLng: LatLng,deviceViewModel: DeviceViewModel) {
         }
     }
 }
+
 
 /*
 @Preview(showBackground = true)
