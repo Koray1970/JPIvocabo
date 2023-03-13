@@ -1,7 +1,10 @@
 package com.example.jpivocabo
 
 import android.content.Intent
+import android.os.Build
+import android.os.Build.VERSION
 import android.os.Bundle
+import android.os.Parcelable
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -29,6 +32,7 @@ import java.time.LocalDateTime
 import java.util.*
 
 
+@Suppress("DEPRECATION")
 class AddDeviceForm : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,11 +44,21 @@ class AddDeviceForm : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 ) {
-                    val intlatlng = intent.getStringExtra("location")
-                    var tlatLng = Json.decodeFromString<DLatLng>(intlatlng.toString())
-                    latLng = LatLng(tlatLng.latitude, tlatLng.longitude)
-                    if(intent.hasExtra("scannedqrcode")){
-                        scannedqrcode= intent.getStringExtra("scannedqrcode").toString()
+                    if(!intent.hasExtra("device")) {
+                        val intlatlng = intent.getStringExtra("location")
+                        var tlatLng = Json.decodeFromString<DLatLng>(intlatlng.toString())
+                        latLng = LatLng(tlatLng.latitude, tlatLng.longitude)
+                        if (intent.hasExtra("scannedqrcode")) {
+                            scannedqrcode = intent.getStringExtra("scannedqrcode").toString()
+                        }
+                    }
+                    else{
+
+                        device= if(VERSION.SDK_INT>=Build.VERSION_CODES.TIRAMISU)
+                            intent.getParcelableExtra("device",Device::class.java)!!
+                        else
+                            intent.getParcelableExtra<Device>("device")!!
+
                     }
                     FormInit(latLng,scannedqrcode)
                 }
@@ -55,7 +69,7 @@ class AddDeviceForm : ComponentActivity() {
     companion object {
         private lateinit var latLng: LatLng
         private var scannedqrcode:String=""
-
+        lateinit var device:Device
     }
 }
 
@@ -65,9 +79,13 @@ private val TAG = "FormInit"
 @Composable
 fun FormInit(latLng: LatLng,scannedQRCode:String) {
     val context = LocalContext.current;
+    val device:Device
+    if(AddDeviceForm.Companion.device!=null)
+        device=AddDeviceForm.Companion.device
+
     var txtmacaddress by rememberSaveable { mutableStateOf("") }
     if(scannedQRCode!="")
-        txtmacaddress= AppHelper().StringToMacaddress(scannedQRCode).toString()
+        txtmacaddress=device.macaddress?device: AppHelper().StringToMacaddress(scannedQRCode).toString()
     var haserrormacaddress by rememberSaveable { mutableStateOf(false) }
     var txtdevicename by rememberSaveable { mutableStateOf("") }
     var haserrordevicename by rememberSaveable { mutableStateOf(false) }
