@@ -43,7 +43,10 @@ class AddDeviceForm : ComponentActivity() {
                     val intlatlng = intent.getStringExtra("location")
                     var tlatLng = Json.decodeFromString<DLatLng>(intlatlng.toString())
                     latLng = LatLng(tlatLng.latitude, tlatLng.longitude)
-                    FormInit(latLng)
+                    if(intent.hasExtra("scannedqrcode")){
+                        scannedqrcode= intent.getStringExtra("scannedqrcode").toString()
+                    }
+                    FormInit(latLng,scannedqrcode)
                 }
             }
         }
@@ -51,6 +54,7 @@ class AddDeviceForm : ComponentActivity() {
 
     companion object {
         private lateinit var latLng: LatLng
+        private var scannedqrcode:String=""
 
     }
 }
@@ -59,13 +63,17 @@ private val TAG = "FormInit"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FormInit(latLng: LatLng) {
+fun FormInit(latLng: LatLng,scannedQRCode:String) {
     val context = LocalContext.current;
     var txtmacaddress by rememberSaveable { mutableStateOf("") }
+    if(scannedQRCode!="")
+        txtmacaddress= AppHelper().StringToMacaddress(scannedQRCode).toString()
     var haserrormacaddress by rememberSaveable { mutableStateOf(false) }
     var txtdevicename by rememberSaveable { mutableStateOf("") }
     var haserrordevicename by rememberSaveable { mutableStateOf(false) }
     val dbViewModel: DBViewModel = viewModel(factory = DBViewModelFactory(context.applicationContext as IvocaboApplication))
+
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -143,7 +151,6 @@ fun FormInit(latLng: LatLng) {
 
 
                         dbViewModel.addDevice(device)
-
 
                         val intgoback = Intent(context.applicationContext, MainActivity::class.java)
                         context.startActivity(intgoback)

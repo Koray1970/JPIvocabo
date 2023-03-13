@@ -2,6 +2,7 @@ package com.example.jpivocabo
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.Looper
@@ -12,25 +13,29 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresPermission
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
+import androidx.compose.material3.ListItem
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.room.Room
 import com.example.jpivocabo.database.*
 import com.example.jpivocabo.ui.theme.JPIvocaboTheme
 import com.google.android.gms.location.*
@@ -163,7 +168,7 @@ class MainActivity : ComponentActivity() {
 private var devicelist: List<Device>? = null
 
 //@Preview(showBackground = true)
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MainPage(locationStateViewModel: LocationStateViewModel) {
     //val singapore = LatLng(1.35, 103.87)
@@ -172,7 +177,7 @@ fun MainPage(locationStateViewModel: LocationStateViewModel) {
         locationStateViewModel.locationStateData.latitude,
         locationStateViewModel.locationStateData.longitude
     )
-    //var dlist = remember { mutableStateOf(List<Device>)  }
+    val dismissState = rememberDismissState()
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(locState, 18f)
     }
@@ -182,10 +187,10 @@ fun MainPage(locationStateViewModel: LocationStateViewModel) {
     val fillcolor = Color(0x20ff0000)
 
     val openDeviceAddDialog = remember { mutableStateOf(false) }
-    val dbViewModel:DBViewModel= viewModel(factory = DBViewModelFactory(context.applicationContext as IvocaboApplication))
+    val dbViewModel: DBViewModel =
+        viewModel(factory = DBViewModelFactory(context.applicationContext as IvocaboApplication))
 
     devicelist = dbViewModel.readAllDevice.observeAsState(initial = listOf()).value
-
 
     Column {
         Box(
@@ -223,34 +228,122 @@ fun MainPage(locationStateViewModel: LocationStateViewModel) {
                 modifier = Modifier.padding(10.dp, 8.dp)
             )
             Spacer(Modifier.weight(1f))
-            Button(onClick = { openDeviceAddDialog.value = true }) {
+            Button(onClick = {
+                if (locState != null) {
+                    openDeviceAddDialog.value = true
+                } else {
+                    Toast.makeText(
+                        context,
+                        "Please check internet connection!",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }) {
                 Text(text = stringResource(id = R.string.add_device))
             }
         }
 
 
-        Row(modifier = Modifier.fillMaxSize()) {
-            if (devicelist!!.isNotEmpty()) {
-                LazyColumn(
-                    contentPadding = PaddingValues(
-                        horizontal = 16.dp,
-                        vertical = 8.dp
+
+        if (devicelist!!.isNotEmpty()) {
+
+            LazyColumn(modifier = Modifier.wrapContentHeight()) {
+                itemsIndexed(
+                    items = devicelist!!,
+                    key = { index: Int, item: Device -> item.id }) { index: Int, item: Device ->
+                    val dismissState = rememberDismissState(
+                        confirmValueChange = {
+                            if (it == DismissValue.DismissedToStart) {
+                                devicelist = devicelist!!.toMutableList().also { it.remove(item) }
+                            } else if (it == DismissValue.DismissedToEnd) {
+                                val intforminput = Intent(context, AddDeviceForm::class.java)
+                                intforminput.putExtra("device",item )
+                                context.startActivity(intforminput)
+                            }
+                            true
+                        }
                     )
-                ) {
-                    items(devicelist!!) {
-                        Text(text = it.macaddress!!)
-                    }
+                    SwipeToDismiss(
+                        modifier = Modifier
+                            .padding(vertical = 1.dp)
+                            .animateItemPlacement(),
+                        directions = setOf(
+                            DismissDirection.StartToEnd,
+                            DismissDirection.EndToStart
+                        ),
+
+                        state = dismissState,
+                        background = {
+                            val direction =
+                                dismissState.dismissDirection ?: return@SwipeToDismiss
+                            val color by animateColorAsState(
+                                when (dismissState.targetValue) {
+                                    DismissValue.Default -> Color.LightGray
+                                    DismissValue.DismissedToEnd -> Color.Green
+                                    DismissValue.DismissedToStart -> Color.Red
+                                }
+                            )
+                            val alignment = when (direction) {
+                                DismissDirection.StartToEnd -> Alignment.CenterStart
+                                DismissDirection.EndToStart -> Alignment.CenterEnd
+                            }
+                            val icon = when (direction) {
+                                DismissDirection.StartToEnd -> R.drawable.baseline_text_snippet_white_24
+                                DismissDirection.EndToStart -> R.drawable.baseline_delete_forever__white24
+                            }
+                            val iconscale by animateFloatAsState(targetValue = if (dismissState.targetValue == DismissValue.Default) 0.8f else 1.2f)
+                            Box(
+                                Modifier
+                                    .fillMaxSize()
+                                    .background(color),
+                                contentAlignment = alignment
+                            ) {
+
+                                androidx.compose.material3.Icon(
+                                    painter = painterResource(id = icon),
+                                    contentDescription = "Remove Ivocabo!",
+                                    Modifier.scale(iconscale)
+                                )
+
+                            }
+                        },
+                        dismissContent = {
+                            //ListItemView(item!!)
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevation = CardDefaults.cardElevation(
+                                    defaultElevation = animateDpAsState(
+                                        targetValue = if (dismissState.dismissDirection != null) 4.dp else 0.dp
+                                    ).value
+                                )
+
+                            ) {
+
+                                ListItem(
+                                    leadingContent = {
+                                        androidx.compose.material3.Icon(
+                                            painter = painterResource(id = R.drawable.baseline_bluetooth_orange_24),
+                                            contentDescription = "Ivocabo Device"
+                                        )
+                                    },
+                                    headlineText = { item.name?.let { Text(text = it) } },
+                                    supportingText = { item.macaddress?.let { Text(text = it) } }
+
+                                )
+                                Divider()
+                            }
+
+                        }
+                    )
                 }
             }
         }
-
     }
-
-
     DeviceAddBottomSheet(openDeviceAddDialog, locationStateViewModel)
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeviceAddBottomSheet(
     openDialog: MutableState<Boolean>,
@@ -258,6 +351,11 @@ fun DeviceAddBottomSheet(
 ) {
     val context = LocalContext.current;
     var latLng = locationStateViewModel.locationStateData
+
+    val intforminput = Intent(context, AddDeviceForm::class.java)
+    intforminput.putExtra("location", Json.encodeToString(latLng))
+
+
     if (openDialog.value) {
         val barcodeLauncher = rememberLauncherForActivityResult<ScanOptions, ScanIntentResult>(
             ScanContract()
@@ -265,69 +363,51 @@ fun DeviceAddBottomSheet(
             if (result.contents == null) {
                 Toast.makeText(context, "Cancelled", Toast.LENGTH_LONG).show()
             } else {
-                Toast.makeText(
-                    context,
-                    "Scanned: " + result.contents,
-                    Toast.LENGTH_LONG
-                ).show()
+                openDialog.value = false
+                intforminput.putExtra("scannedqrcode", result.contents)
+                context.startActivity(intforminput)
             }
         }
 
 
         val (selectedOption, onOptionSelected) = remember { mutableStateOf(MainActivity.rdOptAddDevice[0]) }
         var rBDeviceAddState by remember { mutableStateOf(true) }
-        //MaterialTheme {
-        AlertDialog(onDismissRequest = { openDialog.value = false }, confirmButton = {
-            TextButton(onClick = {
-                if (selectedOption == "Scan QRCode") {
+
+        ModalBottomSheet(
+            onDismissRequest = { openDialog.value = false },
+        ) {
+            Column() {
+                TextButton(onClick = {
                     val options = ScanOptions()
                     options.setOrientationLocked(false)
                     barcodeLauncher.launch(options)
-                } else {
-                    if (latLng != null) {
-                        val intforminput = Intent(context, AddDeviceForm::class.java)
-                        intforminput.putExtra("location", Json.encodeToString(latLng))
-                        context.startActivity(intforminput)
-                    } else {
-                        Toast.makeText(
-                            context,
-                            "Please check internet connection!",
-                            Toast.LENGTH_LONG
-                        ).show()
+
+                },
+                    content = {
+                        androidx.compose.material3.Icon(
+                            painter = painterResource(id = R.drawable.baseline_qr_code_scanner_white_24),
+                            contentDescription = "Scan QrCode"
+                        )
+                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                        Text(text = "Scan QrCode")
                     }
+                )
+                TextButton(onClick = {
+                    context.startActivity(intforminput)
                     openDialog.value = false
-                }
-            }) {
-                Text("Confirm")
-            }
-
-
-        }, dismissButton = {}, text = {
-            Column(Modifier.selectableGroup()) {
-                MainActivity.rdOptAddDevice.forEach { text ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .selectable(
-                                selected = (text == selectedOption),
-                                onClick = {
-                                    onOptionSelected(text)
-                                }, role = Role.RadioButton
-                            )
-                    ) {
-                        RadioButton(
-                            selected = (text == selectedOption), onClick = null
+                },
+                    content = {
+                        androidx.compose.material3.Icon(
+                            painter = painterResource(id = R.drawable.baseline_text_snippet_white_24),
+                            contentDescription = "Input Mac Address"
                         )
-                        Text(
-                            text = text,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(start = 16.dp)
-                        )
+                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                        Text(text = "Input Mac Address")
                     }
-                }
+                )
+
             }
-        })
-        //}
+        }
     }
 }
 /*@Preview(showBackground = true)
